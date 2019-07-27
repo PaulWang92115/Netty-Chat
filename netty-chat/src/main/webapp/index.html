@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8" />
+		<title></title>
+	</head>
+	<body>
+		<div>当前用户id是：</div>
+		<div id="user"></div>
+		<div>发送消息:</div>
+		<input type="text" id="msgContent"/> 
+		<div>接收者id</div>
+		<input type="text" id="receiverContent"/> 
+		<input type="button" value="点我发送" onclick="CHAT.chat1()"/>
+		
+		<div>接受消息：</div>
+		<div id="receiveMsg" style="background-color: gainsboro;"></div>
+		
+		<script type="application/javascript">
+			window.app = {
+				
+				/**
+				 * netty服务后端发布的url地址
+				 */
+				nettyServerUrl: 'ws://localhost:8013/ws',
+			
+			
+				/**
+				 * 和后端的枚举对应
+				 */
+				CONNECT: 1, 	// 第一次(或重连)初始化连接
+				CHAT: 2, 		// 聊天消息
+				SIGNED: 3, 		// 消息签收
+				KEEPALIVE: 4, 	// 客户端保持心跳
+				
+				/**
+				 * 和后端的 ChatMsg 聊天模型对象保持一致
+				 * @param {Object} senderId
+				 * @param {Object} receiverId
+				 * @param {Object} msg
+				 * @param {Object} msgId
+				 */
+				Message: function(senderId, receiverId, msg, msgId){
+					this.senderId = senderId;
+					this.receiverId = receiverId;
+					this.msg = msg;
+					this.msgId = msgId;
+					this.isRead = false;
+					this.isSend = false;
+					this.createDate = null;
+					this.messageType = 1;
+				},
+				
+				/**
+				 * 构建消息 DataContent 模型对象
+				 * @param {Object} action
+				 * @param {Object} chatMsg
+				 * @param {Object} extand
+				 */
+				Data: function(action, chatMsg, extand){
+					this.action = action;
+					this.message = chatMsg;
+					this.read = extand;
+				}
+				
+			}
+			var id = randomString(16);
+			var user = document.getElementById("user");
+			user.innerHTML = id;
+			window.CHAT = {
+				socket: null,
+				init: function() {
+					if (window.WebSocket) {
+						if(CHAT.socket != null && CHAT.socket != undefined && CHAT.socket.readyState == WebSocket.OPEN){
+							return false;
+						}
+						CHAT.socket = new WebSocket("ws://localhost:8013/netty/ws");
+						CHAT.socket.onopen = function() {
+							console.log("连接建立成功...");
+							var msg = new app.Message(id,null,null,null);
+							var data = new app.Data(app.CONNECT,msg,null);
+							console.log(JSON.stringify(data));
+						    //发送建立连接
+							CHAT.chat(JSON.stringify(data));
+							// 定时发送心跳
+							setInterval("CHAT.keepalive()", 10000);
+						},
+						CHAT.socket.onclose = function() {
+							console.log("连接关闭...");
+						},
+						CHAT.socket.onerror = function() {
+							console.log("发生错误...");
+						},
+						CHAT.socket.onmessage = function(e) {
+							console.log("接受到消息：" + e.data);
+							var receiveMsg = document.getElementById("receiveMsg");
+							var html = receiveMsg.innerHTML;
+							var re = JSON.parse(e.data);
+							receiveMsg.innerHTML = html + "<br/>" + re.message.msg;
+						}
+					} else {
+						alert("浏览器不支持websocket协议...");
+					}
+				},
+				chat: function(msg) {
+					//var msg = document.getElementById("msgContent");
+					console.log(msg);
+					CHAT.socket.send(msg);
+				},
+				chat1: function(msg) {
+					var m = document.getElementById("msgContent");
+					var n = document.getElementById("receiverContent");
+					var msg = new app.Message(id,n.value,m.value,randomString(18));
+					var data = new app.Data(app.CHAT,msg,null);
+					console.log(JSON.stringify(data));
+					//发送建立连接
+					CHAT.chat(JSON.stringify(data));
+				},
+				keepalive: function() {
+					// 构建对象
+					var dataContent = new app.Data(app.KEEPALIVE, null, null);
+					// 发送心跳
+					CHAT.chat(JSON.stringify(dataContent));
+				}
+			};
+			
+			CHAT.init();
+			function randomString(len) {
+			　　len = len || 32;
+			　　var $chars = 'ABCDEFGHJKMNPQRSTWXYZabcdefhijkmnprstwxyz2345678';    /****默认去掉了容易混淆的字符oOLl,9gq,Vv,Uu,I1****/
+			　　var maxPos = $chars.length;
+			　　var pwd = '';
+			　　for (i = 0; i < len; i++) {
+			　　　　pwd += $chars.charAt(Math.floor(Math.random() * maxPos));
+			　　}
+			　　return pwd;
+			}
+		</script>
+	</body>
+</html>

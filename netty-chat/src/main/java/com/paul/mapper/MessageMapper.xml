@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatismybatismybatis-3-mapper.dtd">
+<mapper namespace="com.paul.mapper.MessageMapper">
+
+    <update id="updateRead" >
+        update t_message SET isRead = true WHERE msgId in
+        <foreach collection="idList" index="index" item="item" open="(" separator="," close=")">
+            #{item}
+        </foreach>
+    </update>
+
+    <update id="updateSend" >
+        update t_message SET isSend = true WHERE msgId in
+        <foreach collection="idList" index="index" item="item" open="(" separator="," close=")">
+            #{item}
+        </foreach>
+    </update>
+	
+</mapper>
